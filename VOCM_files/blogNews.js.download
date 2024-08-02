@@ -1,0 +1,29 @@
+$(document).on('ready socast:reinit',function() {
+    // check blog list cache and purge varnish if expired
+    var cacheNamespace = $('.blogNewsWidget').data('cache-namespace'); // get the first cache namespace value
+    if (cacheNamespace) {
+        $.ajax({
+            url: '/wp-json/socast-elasticsearch/v1/cache_check',
+            data: {
+                page_url: location.href,
+                cache_namespace: cacheNamespace
+            },
+            method: 'GET',
+        });
+    }
+
+    // setup masonry
+    $('div.blogNewsWidget.sc-multicolumn-fadein').not('.featureRotator').each(function() {
+        var width = parseInt($(this).data('colwidth'));
+        if (width > 0) {
+            var wrapper = $('.items-wrapper', this);
+            wrapper.children().wrap("<div class='kk-masonry-panel'></div>");
+    
+            wrapper.chronomasonry({
+                minColumnWidth: width,
+                throttleFn: App.throttle,
+                fadeIn: true
+            });
+        }
+    });
+});

@@ -1,0 +1,108 @@
+$.widget( "socast.socasttouch", {
+	options: {
+		swipeThreshhold: 100,
+		swipeCallback: this._log,
+		pinchCallback: this._log
+	},
+	_create: function() {
+		if (this.element.hasClass('sc-touchable')) return;
+		this.element.addClass('sc-touchable');
+		
+		var that = this;
+		if (('ontouchstart' in document) && ('ontouchend' in document)){
+			this.element.on({
+				"touchstart": function(e) {
+					that._touchstart(that._parseEvents(e));
+				},
+				"touchend": function(e) {
+					that._touchend(that._parseEvents(e));
+				},
+				"touchmove": function(e) {
+					that._touchmove(that._parseEvents(e));
+				},
+			});
+		}
+	},
+	_setOption: function( key, value ) {
+		this._super( key, value );
+	},
+	_setOptions: function( options ) {
+		this._super( options );
+	},
+	_parseEvents: function(e) {
+		var events = [];
+		if (e.originalEvent && e.originalEvent.changedTouches && e.originalEvent.changedTouches.length > 0) {
+			for (var i=0; i<e.originalEvent.changedTouches.length; i++) {
+				events.push(e.originalEvent.changedTouches[i]);
+			}
+		}
+		return events;
+	},
+	_touchstart: function (events) {
+		this.touchStartX = null;
+		this.touchStartY = null;
+		this.pinchDistance = 0;
+		if (events.length === 2) {
+			//pinch
+			this.pinchDistance = Math.hypot(events[0].pageX - events[1].pageX, events[0].pageY - events[1].pageY);
+		} else if (events.length == 1) {
+			this.touchStartX = events[0].clientX;
+			this.touchStartY = events[0].clientY;
+		}
+	},
+	_touchend: function (events) {
+		if (events.length === 2) {
+			//pinch
+			if (this.pinchDistance > 0 && typeof this.options.pinchCallback == 'function') {
+				var pinchEndDist = Math.hypot(events[0].pageX - events[1].pageX, events[0].pageY - events[1].pageY);
+				
+				if (pinchEndDist < this.pinchDistance) {
+					this.options.pinchCallback('zoomout');
+				} else if (this.pinchDistance < pinchEndDist) {
+					this.options.pinchCallback('zoomin');
+				}
+			}
+		} else if (events.length == 1) {
+			//swipe
+			if (this.touchStartX != null && typeof this.options.swipeCallback == 'function') {
+				var end = events[0].clientX;
+				var diffx = 0;
+				if (this.touchStartX != null) {
+					diffx = end - this.touchStartX;
+				}
+				
+				var end = events[0].clientY;
+				var diffy = 0;
+				if (this.touchStartY != null) {
+					diffy = end - this.touchStartY;
+				}
+				
+				if (Math.abs(diffx) >= Math.abs(diffy)) {
+					if (Math.abs(diffx) < this.options.swipeThreshhold) return;
+					if (diffx < 0) {
+						this.options.swipeCallback('left');
+					} else if (diffx > 0) {
+						this.options.swipeCallback('right');
+					}
+				} else {
+					if (Math.abs(diffy) < this.options.swipeThreshhold) return;
+					if (diffy < 0) {
+						this.options.swipeCallback('up');
+					} else if (diffy > 0) {
+						this.options.swipeCallback('down');
+					}
+				}
+			}
+		}
+	},
+	_touchmove: function (events) {
+		if (events.length === 2) {
+			//pinch
+		} else if (events.length == 1) {
+			//swipe
+		}
+	},
+	_log: function (direction) {
+		console.log('socasttouch', direction);
+	}
+});

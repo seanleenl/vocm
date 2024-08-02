@@ -1,0 +1,1423 @@
+/*
+This file is for common admin/dashboard AND front-end js. If the code will be only be used on teh front-end put it in frontend.js.If the code will be only be used in the admin/dashboard put it in dashboard.js.
+
+Only put code in this file if it is common. If it is only going to be used on one page or in one small section, put it there.
+*/
+if ($ == undefined && jQuery != undefined) $ = jQuery;
+if ($.ui == undefined && jQuery.ui != undefined) $.ui = jQuery.ui;
+$(document).on('ready socast:reinit',function() {
+	$('input[type="password"]').val('');
+	LocationSelector.init();
+	SVGLoader.init();
+});
+
+var App = App || {};
+if (!window.console) console = {log: function() {}};
+if (!Date.now) {
+	Date.now = function now() {
+		return new Date().getTime();
+	};
+}
+if (!Array.prototype.last){
+	Object.defineProperty(Array.prototype, "last", {
+		enumerable: false,
+		value: function() {
+			if (this.length < 1) return null;
+			return this[this.length - 1];
+		}
+	});
+};
+
+var socast = socast || {};
+socast.events = socast.events || {};
+socast.events.datepicker = {};
+socast.events.datepicker.update = "scdatepickerupdate";
+
+function text2linkB(text, type) {
+		if (type == undefined) type = 'fb';
+		var words = text.split(' ');
+		for (var i = 0; i < words.length; i++) {
+			words[i] = text2linkC(words[i]);
+		}
+		text = words.join(" ");
+		//text = text2link(text);
+		if (type == 'tw') {
+			text = text.replace(/(@[-\w]+)/, '<a href="https://twitter.com/$1" target="_blank">$1</a>');
+			text = text.replace(/(\s)(@[-\w]+)/ig, '<a href="https://twitter.com/$2" target="_blank">$1$2</a>');
+			text = text.replace(/(#)([-\w]+)/, '<a href="https://twitter.com/#!/search/%23$2" target="_blank">$1$2</a>');
+			text = text.replace(/(\s)(#)([-\w]+)/ig, '<a href="https://twitter.com/#!/search/%23$3" target="_blank">$1$2$3</a>');
+		}
+		return text;
+	}
+
+function text2linkC(text) {
+	text = text.replace(/(https?:\/\/([-\w\.]+[-\w])+(:\d+)?(\/([\w\/_\.#-~]*(\?\S+)?[^\.\s'"])?)?)/, '<a href="$1" target="_blank">$1</a>');
+	if (text.indexOf(location.hostname) != -1) {
+		return text.replace('_blank', '');
+	}
+	return text;
+}
+
+String.prototype.capitalize = function() {
+	return this.charAt(0).toUpperCase() + this.slice(1);
+}
+
+//strips out all special characters, replace space with dashes
+function safeString(str) {
+	str = str.replace(/[^\w\s]/gi, '');
+	str = str.replace(/\s/g, '-');
+	return str;
+}
+
+//returns true if browser is NOT IE
+function notIE() {
+	var msie = /*@cc_on!@*/0;
+	msie = (msie || !!navigator.userAgent.match(/Trident\/7\./));
+	if (msie) return false;
+	else return true;
+}
+
+function extractYoutubeCode(url) {
+	var vhash = '';
+
+	var sharelink = 'http://youtu.be/';
+	if (url.startsWith(sharelink)) {
+		vhash = url.replace(sharelink, '');
+	} else if (url.indexOf('youtube.com') >= 0) {
+		var regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+		var match = url.match(regExp);
+		if (match && match[2].length==11){
+			return match[2];
+		}
+	}
+	return vhash;
+}
+
+function hasLocalStorage() {
+	try {
+		return 'localStorage' in window && window['localStorage'] !== null;
+	} catch(e) {
+		return false;
+	}
+}
+
+function capitalize(str) {
+	return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function isExternal(url) {
+	url = url.replace('http://', '').replace('https://', '');
+	var host = location.href.replace('http://', '').replace('https://', ''); 
+	var host1 = host.split('/')[0];
+	var host2 = url.split('/')[0];
+	return (!(host1.match(host2) || host2.match(host1)));
+}
+
+function validateEmail(email) {
+	var re = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,4})+$/;
+	return re.test(email);
+}
+
+String.prototype.trim = function() {
+	return this.replace(/^\s\s*/, '').replace(/\s\s*$/, '');
+};
+String.prototype.endsWith = function(suffix) {
+	return this.indexOf(suffix, this.length - suffix.length) !== -1;
+};
+String.prototype.startsWith = function(pattern) {
+	return this.indexOf(pattern) === 0;
+};
+
+//simple function for determining if a string is a date
+function isDate(str) {
+	var foo = new Date(str);
+	return !(foo.toString() == 'NaN' || foo.toString() == 'Invalid Date');
+}
+
+//cookie handling
+function createCookie(name, value, days) {
+	if (days) {
+		var date = new Date();
+		date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+		var expires = "; expires=" + date.toUTCString(); /* toGMTString() */
+	} else var expires = "";
+	document.cookie = name + "=" + value + expires + "; path=/";
+}
+
+function readCookie(name) {
+	var nameEQ = name + "=";
+	var ca = document.cookie.split(';');
+	for (var i = 0; i < ca.length; i++) {
+		var c = ca[i];
+		while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+		if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+	}
+	return null;
+}
+
+function eraseCookie(name) {
+	createCookie(name, "", -1);
+}
+
+function getFacebookSocialImage(item) {
+	var img = '';
+	var is_page = (item.from != undefined && (item.from.category != undefined || (item.from.context != undefined && item.from.context.friends_who_like != undefined)));
+	if (item.object_id != undefined && item.object_id != '' && is_page) {
+		img = 'https://graph.facebook.com/'+item.object_id+'/picture';
+	} else if (item.full_picture != undefined) {
+		img = item.full_picture;
+	} else if (item.picture != undefined) {
+		img = item.picture;
+		img = img.replace('_s.jpg', '_n.jpg').replace('_s.png', '_n.png').replace('_s.gif', '_n.gif');
+		if (img.match(/external.ak.fbcdn.net/) != null) {
+			img = img.substring(img.indexOf('url=http')+4);
+			img = decodeURIComponent(img);
+		}
+		if (img.match(/platform.ak.fbcdn.net/) != null) {
+			img = img.substring(img.indexOf('src=http')+4);
+			img = decodeURIComponent(img);
+		}
+		if (img.match(/fbcdn/) != null) {
+			img = img.replace(/(p|s)1\d\dx\d\d\d?\//,'');
+		}
+	} else {
+		img = item;
+		img = img.replace('_s.jpg', '_n.jpg').replace('_s.png', '_n.png').replace('_s.gif', '_n.gif');
+		if (img.match(/external.ak.fbcdn.net/) != null) {
+			img = img.substring(img.indexOf('url=http')+4);
+			img = decodeURIComponent(img);
+		}
+		if (img.match(/platform.ak.fbcdn.net/) != null) {
+			img = img.substring(img.indexOf('src=http')+4);
+			img = decodeURIComponent(img);
+		}
+		if (img.match(/fbcdn/) != null) {
+			img = img.replace(/(p|s)1\d\dx\d\d\d?\//,'');
+		}
+	}
+
+	return img;
+}
+
+function socialImgError(el) {
+	//console.log(el);
+	var img = $(el);
+	var src = img.attr('data-osrc');
+	if (src != undefined && src != img.attr('src')) {
+		img.attr('src',src);
+	}
+}
+
+
+/**
+ * Function : dump()
+ * Arguments: The data - array,hash(associative array),object
+ *    The level - OPTIONAL
+ * Returns  : The textual representation of the array.
+ * This function was inspired by the print_r function of PHP.
+ * This will accept some data as the argument and return a
+ * text that will be a more readable version of the
+ * array/hash/object that is given.
+ * Docs: http://www.openjs.com/scripts/others/dump_function_php_print_r.php
+ */
+function dump(arr, level) {
+	var dumped_text = "";
+	if (!level) level = 0;
+
+	//The padding given at the beginning of the line.
+	var level_padding = "";
+	for (var j = 0; j < level + 1; j++) level_padding += "    ";
+
+	if (typeof (arr) == 'object') { //Array/Hashes/Objects
+		for (var item in arr) {
+			var value = arr[item];
+
+			if (typeof (value) == 'object') { //If it is an array,
+				dumped_text += level_padding + "'" + item + "' ...\n";
+				dumped_text += dump(value, level + 1);
+			} else {
+				dumped_text += level_padding + "'" + item + "' => \"" + value + "\"\n";
+			}
+		}
+	} else { //Stings/Chars/Numbers etc.
+		dumped_text = "===>" + arr + "<===(" + typeof (arr) + ")";
+	}
+	return dumped_text;
+}
+
+function parseUAgent() {
+	var client = {};
+	var unknown = 'Unknown';
+
+	// screen
+	var screenSize = '';
+	if (screen.width) {
+		width = (screen.width) ? screen.width : '';
+		height = (screen.height) ? screen.height : '';
+		screenSize += '' + width + " x " + height;
+	}
+	client.screenSize = screenSize;
+
+	//browser
+	var nVer = navigator.appVersion;
+	var nAgt = navigator.userAgent;
+	var browser = navigator.appName;
+	var version = '' + parseFloat(navigator.appVersion);
+	var majorVersion = parseInt(navigator.appVersion, 10);
+	var nameOffset, verOffset, ix;
+
+	// Opera
+	if ((verOffset = nAgt.indexOf('Opera')) != -1) {
+		browser = 'Opera';
+		version = nAgt.substring(verOffset + 6);
+		if ((verOffset = nAgt.indexOf('Version')) != -1) {
+			version = nAgt.substring(verOffset + 8);
+		}
+	}
+	// MSIE
+	else if ((verOffset = nAgt.indexOf('MSIE')) != -1) {
+		browser = 'Microsoft Internet Explorer';
+		version = nAgt.substring(verOffset + 5);
+	}
+	// Chrome
+	else if ((verOffset = nAgt.indexOf('Chrome')) != -1) {
+		browser = 'Chrome';
+		version = nAgt.substring(verOffset + 7);
+	}
+	// Safari
+	else if ((verOffset = nAgt.indexOf('Safari')) != -1) {
+		browser = 'Safari';
+		version = nAgt.substring(verOffset + 7);
+		if ((verOffset = nAgt.indexOf('Version')) != -1) {
+			version = nAgt.substring(verOffset + 8);
+		}
+	}
+	// Firefox
+	else if ((verOffset = nAgt.indexOf('Firefox')) != -1) {
+		browser = 'Firefox';
+		version = nAgt.substring(verOffset + 8);
+	}
+	// Other browsers
+	else if ((nameOffset = nAgt.lastIndexOf(' ') + 1) < (verOffset = nAgt.lastIndexOf('/'))) {
+		browser = nAgt.substring(nameOffset, verOffset);
+		version = nAgt.substring(verOffset + 1);
+		if (browser.toLowerCase() == browser.toUpperCase()) {
+			browser = navigator.appName;
+		}
+	}
+	client.browser = browser;
+	// trim the version string
+	if ((ix = version.indexOf(';')) != -1) version = version.substring(0, ix);
+	if ((ix = version.indexOf(' ')) != -1) version = version.substring(0, ix);
+
+	majorVersion = parseInt('' + version, 10);
+	if (isNaN(majorVersion)) {
+		version = '' + parseFloat(navigator.appVersion);
+		majorVersion = parseInt(navigator.appVersion, 10);
+	}
+	client.browserVersion = version;
+
+	// mobile version
+	var mobile = /Mobile|mini|Fennec|Android|iP(ad|od|hone)/.test(nVer);
+	client.isMobile = mobile;
+
+	// cookie
+	var cookieEnabled = (navigator.cookieEnabled) ? true : false;
+
+	if (typeof navigator.cookieEnabled == 'undefined' && !cookieEnabled) {
+		document.cookie = 'testcookie';
+		cookieEnabled = (document.cookie.indexOf('testcookie') != -1) ? true : false;
+	}
+	client.cookieEnabled = cookieEnabled;
+
+	var os = unknown;
+	var clientStrings = [
+		{s: 'Windows 3.11', r: /Win16/},
+		{s: 'Windows 95', r: /(Windows 95|Win95|Windows_95)/},
+		{s: 'Windows ME', r: /(Win 9x 4.90|Windows ME)/},
+		{s: 'Windows 98', r: /(Windows 98|Win98)/},
+		{s: 'Windows CE', r: /Windows CE/},
+		{s: 'Windows 2000', r: /(Windows NT 5.0|Windows 2000)/},
+		{s: 'Windows XP', r: /(Windows NT 5.1|Windows XP)/},
+		{s: 'Windows Server 2003', r: /Windows NT 5.2/},
+		{s: 'Windows Vista', r: /Windows NT 6.0/},
+		{s: 'Windows 7', r: /(Windows 7|Windows NT 6.1)/},
+		{s: 'Windows 8.1', r: /(Windows 8.1|Windows NT 6.3)/},
+		{s: 'Windows 8', r: /(Windows 8|Windows NT 6.2)/},
+		{s: 'Windows NT 4.0', r: /(Windows NT 4.0|WinNT4.0|WinNT|Windows NT)/},
+		{s: 'Windows ME', r: /Windows ME/},
+		{s: 'Android', r: /Android/},
+		{s: 'Open BSD', r: /OpenBSD/},
+		{s: 'Sun OS', r: /SunOS/},
+		{s: 'Linux', r: /(Linux|X11)/},
+		{s: 'iOS', r: /(iPhone|iPad|iPod)/},
+		{s: 'Mac OS X', r: /Mac OS X/},
+		{s: 'Mac OS', r: /(MacPPC|MacIntel|Mac_PowerPC|Macintosh)/},
+		{s: 'QNX', r: /QNX/},
+		{s: 'UNIX', r: /UNIX/},
+		{s: 'BeOS', r: /BeOS/},
+		{s: 'OS/2', r: /OS\/2/},
+		{s: 'Search Bot', r: /(nuhk|Googlebot|Yammybot|Openbot|Slurp|MSNBot|Ask Jeeves\/Teoma|ia_archiver)/}
+	];
+	for (var id in clientStrings) {
+		var cs = clientStrings[id];
+		if (cs.r.test(nAgt)) {
+			os = cs.s;
+			break;
+		}
+	}
+
+	var osVersion = unknown;
+
+	if (/Windows/.test(os)) {
+		osVersion = /Windows (.*)/.exec(os)[1];
+		os = 'Windows';
+	}
+	client.os = os;
+
+	var osVersionRegex = null;
+    switch (os) {
+        case 'Mac OS X':
+            osVersionRegex = /Mac OS X ([\_\d]+)/.exec(nAgt);
+            if (osVersionRegex !== null && osVersionRegex.length >= 2) {
+                osVersion = osVersionRegex[1];
+            }
+            
+            break;
+
+        case 'Android':
+            osVersionRegex = /Android ([\.\_\d]+)/.exec(nAgt);
+            if (osVersionRegex !== null && osVersionRegex >= 2) {
+                osVersion = osVersionRegex[1];
+            }
+            break;
+
+        case 'iOS':
+            osVersionRegex = /OS (\d+)_(\d+)_?(\d+)?/.exec(nVer);
+            if (osVersionRegex !== null) {
+                if (osVersionRegex.length == 3) {
+                    osVersion = osVersionRegex[1] + '.' + osVersionRegex[2] + '.' + 0;
+                } else if (osVersionRegex.length >= 4) {
+                    osVersion = osVersionRegex[1] + '.' + osVersionRegex[2] + '.' + osVersionRegex[3];
+                }
+            }
+            
+            break;
+    }
+	client.osVersion = osVersion;
+
+	return client;
+}
+
+function utc2local(e, browser_local_timeZoneOffset)
+{
+	var dtString = e.html().replace(/\ *at\ */, ' ');
+	if (dtString.match(/^\d+[\/-]\d+[\/-]\d+\ *\d+:\d+\ *[pPaA][mM]$/)) {
+		var utc_time_stamp = Date.parse(dtString);// milliseconds
+		var local_time_stamp = utc_time_stamp - browser_local_timeZoneOffset * 60 * 1000;
+		var comment_dade = new Date(local_time_stamp);
+		var comment_year = comment_dade.getFullYear().toString();
+		var coment_month = (comment_dade.getMonth() + 1 < 10 ? '0' : '') + (comment_dade.getMonth() + 1).toString();
+		var comment_date = (comment_dade.getDate() < 10 ? '0' : '') + comment_dade.getDate().toString();
+		var comment_hours = (comment_dade.getHours() > 12 ? comment_dade.getHours() - 12 : comment_dade.getHours()).toString();
+		var comment_minutes = (comment_dade.getMinutes() < 10 ? '0' : '') + comment_dade.getMinutes().toString();
+		var comment_local_date_string = comment_year + '/' + coment_month + '/' + comment_date + ' at ' + comment_hours + ':' + comment_minutes + ' ' + (comment_dade.getHours() > 12 ? 'pm' : 'am')
+		e.html(comment_local_date_string);
+	}
+}
+
+function isFileAPIEnabled() {
+	return !!window.FileReader;
+};
+
+var SCFileReader = {};
+SCFileReader.handleFileSelect = function(evt, callback) {
+	var files = evt.target.files; // FileList object
+
+	// Loop through the FileList and render image files as thumbnails.
+	for (var i = 0, f; f = files[i]; i++) {
+		// Only process image files.
+		if (!f.type.match('image.*')) {
+			continue;
+		}
+
+		var reader = new FileReader();
+
+		// Closure to capture the file information.
+		reader.onload = (function(theFile) {
+			return function(e) {
+				if (typeof callback == 'function') callback(e.target.result);
+			};
+		})(f);
+
+		// Read in the image file as a data URL.
+		reader.readAsDataURL(f);
+	}
+}
+
+function notifyResponse(id, response) {
+	$("#"+id).css('display', 'block');
+	var type = response['type'] || response['status'];
+	$("#"+id).attr('class', 'alert alert-'+type);
+	if (response['title'] != undefined && response['title'] != '') {
+		$("#"+id+" h3").html(response['title']).show();
+	} else {
+		$("#"+id+" h3").html('').hide();
+	}
+	$("#"+id+" p").html(response['msg']);
+	if (response['error_msg']) {
+		$("#" + id + " p").append('<br><br><span style="font-size: .8em"><b>Error: </b>' + response['error_msg'] + '</span>');
+	}
+}
+
+function openPostFormInPopup(url, data, windowDetails) {
+	var composeForm = document.createElement("form");
+	//composeForm.target = "_blank";
+	composeForm.method = "POST";
+	composeForm.action =url;
+	var opup = window.open('about:blank', 'formpopup', windowDetails);
+	composeForm.target = "formpopup";
+
+	var composeData = document.createElement("input");
+	composeData.type = "hidden";
+	composeData.name = "data";
+	var formd = data;
+	if (typeof data != 'string') formd = JSON.stringify(data);
+	composeData.value = formd;
+
+	composeForm.appendChild(composeData);
+	document.body.appendChild(composeForm);
+	composeForm.submit();
+
+	$(composeForm).remove();
+	return opup;
+}
+
+function styleDataTableSearch() {
+	$('.dataTables_filter input').attr('placeholder', 'Search').siblings().hide();
+	$('.dataTables_filter label').contents().filter(function() {
+		return this.nodeType == 3;
+	}).each(function() {
+		$(this).remove();
+	});
+}
+
+function loadSvg(selector, url, image_type, alt) {
+	var target = $(selector);
+	if (alt == undefined) alt = '';
+	
+	var cdn = '';
+	if (typeof CDN_HOST_MEDIA !== "undefined") {
+		cdn = CDN_HOST_MEDIA;
+	}
+
+	// If SVG is supported
+	if (typeof SVGRect != "undefined") {
+		// Request the SVG file
+		$.ajax({
+			type: 'get',
+			data: {},
+			dataType: 'html',
+			url: url + '.svg',
+			success: function(response) {
+				target.html(response);
+			},
+			error: function(response) {
+				target.html("<img src='" +cdn+ url + image_type+".png' alt='"+alt+"' class='svgFallback' />");
+			}
+		});
+	} else {
+		// Fallback to png
+		target.html("<img src='" +cdn+ url + image_type+".png' alt='"+alt+"' class='svgFallback' />");
+	}
+}
+
+function getLuminance(hex) {
+	hex = hex.replace('#', '');
+	var c = hex;
+	if (hex.length == 3) {
+		c = hex.charAt(0)+hex.charAt(0)+hex.charAt(1)+hex.charAt(1)+hex.charAt(2)+hex.charAt(2);
+	}
+	
+	if (c.match(/^[0-9a-fA-F]{6}$/)) {
+		var rgb = parseInt(c, 16);   // convert rrggbb to decimal
+		var r = (rgb >> 16) & 0xff;  // extract red
+		var g = (rgb >>  8) & 0xff;  // extract green
+		var b = (rgb >>  0) & 0xff;  // extract blue
+
+		var luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+		
+		return luma;
+	}
+	
+	return 0;
+}
+
+function roundPrecision(number, precision) {
+	var factor = Math.pow(10, precision);
+	var tempNumber = number * factor;
+	var roundedTempNumber = Math.round(tempNumber);
+	return roundedTempNumber / factor;
+}
+
+function getShortNumberFormat(num) {
+	var display = num;
+	
+	if (num > 1000000000000) {
+		display = roundPrecision(num/1000000000000, 2)+'T';
+	} else if (num > 1000000000) {
+		display = roundPrecision(num/1000000000, 2)+'B';
+	} else if (num > 1000000) {
+		display = roundPrecision(num/1000000, 2)+'M';
+	} else if (num > 1000) {
+		display = roundPrecision(num/1000, 2)+'K';
+	}
+	
+	return display;
+}
+var LocationSelector = {};
+LocationSelector.countries = [];
+LocationSelector.regions = {};
+LocationSelector.init = function() {
+	if ($('.locationSelector select.country').length < 1) {
+		LocationSelector.countries = [];
+		LocationSelector.regions = {};
+		return;
+	}
+	$('.locationSelector .country').each(function() {
+		LocationSelector.setCountry($(this), $(this).val());
+	});
+	$('.locationSelector .country').change(function() {
+		var val = $(this).val();
+		
+		LocationSelector.setCountry($(this), val);
+	});
+	
+	$('.locationSelector .code input').blur(LocationSelector.checkCode);
+}
+
+LocationSelector.setCountry = function(obj, country) {
+	var regionObj = obj.siblings('.region');
+	var codeObj = obj.siblings('.code');
+	$("#zip-error").html('').hide();
+	if (country == '') {
+		regionObj.html('').hide().removeClass().addClass('region');
+		codeObj.hide();
+	} else if (LocationSelector.regions[country] != undefined) {
+		var length = LocationSelector.regions[country].length;
+		var html = '';
+		if (length > 0) {
+			for (var i=0; i< length; i++) {
+				var region = LocationSelector.regions[country][i];
+				var code = region.name;
+				if (code.search(/^All /) >= 0) code = '';
+				else if (code.search(/^Select /) >= 0) code = '';
+				html += "<option value='"+code+"'>"+region.name+"</option>";
+			}
+			regionObj.html(html).show().removeClass().addClass('region country-'+country);
+			if (obj.parent().hasClass('codeOverride') && (country == 'CA' || country == 'US')) {
+				regionObj.hide();
+				codeObj.show();
+			} else {
+				codeObj.hide();
+			}
+		} else {
+			regionObj.html(html).hide().removeClass().addClass('region country-'+country);
+			codeObj.hide();
+		}
+	}
+}
+
+//used for setting region on page load, not for switching regions
+LocationSelector.setRegion = function(regionObj, region) {
+	var country = regionObj.siblings('.country').val();
+	var codeObj = regionObj.siblings('.code');
+	regionObj.val(region);
+	if (regionObj.parent().hasClass('codeOverride') && (country == 'CA' || country == 'US')) {
+		regionObj.hide();
+		codeObj.show();
+	} else {
+		codeObj.hide();
+	}
+}
+
+LocationSelector.checkCode = function() {
+	var errObj = $("#zip-error");
+	errObj.hide();
+	var data = {};
+	data.zip = $("#zip").val();
+	data.country = $("#country").val();
+	data.validationCheck = $('.validate').length ? 'enabled' : 'disabled';
+	if (data.country != 'CA' && data.country != 'US') return;
+	
+	$("#zip").addClass('loader');
+	$.ajax({
+		type: "GET",
+		datatype: "json",
+		url: "/api/v1/user/verifyZipCode",
+		data: data,
+		success: function(data){
+			var regionObj = $('#country').siblings('.region');
+			if (data.status != undefined && data.status == 'error') {
+				errObj.html(data.msg).show();
+				if (data.code != undefined && data.code == '404') {
+					regionObj.show();
+				}
+			} else {
+				regionObj.hide();
+				regionObj.val('');
+			}
+		},
+		complete: function() {
+			$("#zip").removeClass('loader');
+		}
+	});
+}
+
+LocationSelector.getClientLocation = function() {
+	if ($('.locationSelector select.country').length < 1) return;
+	$.ajax({
+		type: 'get',
+		data: {},
+		dataType: 'jsonp',
+		url: 'https://get.geojs.io/v1/ip/country.js',
+		success: function(response) {
+			if (response && response.country != undefined) {
+				$('.locationSelector .country').each(function() {
+					$(this).val(response.country);
+					LocationSelector.setCountry($(this), response.country);
+				});
+			}
+		},
+		error: function(response) {
+		}
+	});
+}
+
+App.getTimeAgo = function(timestamp) {
+	var difference = (Date.now()/1000) - timestamp;
+	var periods = ["second", "minute", "hour", "day", "week", "month", "year", "decade", "century"];
+	var lengths = ["60","60","24","7","4.35","12","10","100"];
+	for(var j = 0; difference >= lengths[j]; j++) {
+		difference = difference/lengths[j];
+	}
+	difference = Math.round(difference);
+	if (difference < 0) difference = 0;
+	if(difference != 1) periods[j] += "s";
+	var text = difference+" "+periods[j]+" ago";
+	return text;
+};
+
+App.jsonp_decode = function(jsonp) {
+	var first = jsonp.charAt(0);
+	if(first !== '[' && first !== '{') { // we have JSONP
+		jsonp = jsonp.substring(jsonp.indexOf('(')+1);
+		jsonp = jsonp.substring(0, jsonp.length - 2);
+	}
+	return $.parseJSON(jsonp);
+
+};
+
+App.debounce = function(fn, delay) {
+	var timer = null;
+	return function () {
+		var context = this, args = arguments;
+		clearTimeout(timer);
+		timer = setTimeout(function () {
+			fn.apply(context, args);
+		}, delay);
+	};
+};
+
+App.throttle = function(func, wait, options) {
+	var context, args, result;
+	var timeout = null;
+	var previous = 0;
+	if (!options) options = {};
+	var later = function() {
+		previous = options.leading === false ? 0 : Date.now();
+		timeout = null;
+		result = func.apply(context, args);
+		if (!timeout) context = args = null;
+	};
+	return function() {
+		var now = Date.now();
+		if (!previous && options.leading === false) previous = now;
+		var remaining = wait - (now - previous);
+		context = this;
+		args = arguments;
+		if (remaining <= 0 || remaining > wait) {
+			if (timeout) {
+				clearTimeout(timeout);
+				timeout = null;
+			}
+			previous = now;
+			result = func.apply(context, args);
+			if (!timeout) context = args = null;
+		} else if (!timeout && options.trailing !== false) {
+			timeout = setTimeout(later, remaining);
+		}
+		return result;
+	};
+};
+
+App.copyToClipboard = function(str) {
+	var el = document.createElement('textarea');
+	el.value = str;
+	el.setAttribute('readonly', '');
+	el.style.position = 'absolute';
+	el.style.left = '-9999px';
+	document.body.appendChild(el);
+	var selected = document.getSelection().rangeCount > 0 ? document.getSelection().getRangeAt(0) : false;
+	el.select();
+	document.execCommand('copy');
+	document.body.removeChild(el);
+	if (selected) {
+		document.getSelection().removeAllRanges();
+		document.getSelection().addRange(selected);
+	}
+};
+
+App.getNotification = function(type, title, message) {
+	var html = '';
+	
+	if (title != undefined && title != '') {
+		html += '<span class="title">'+title+'</span>';
+	}
+	if (message != undefined && message != '') {
+		html += '<span class="alert-msg">'+message+'</span>';
+	}
+	
+	var c = ['alert'];
+	switch(type) {
+		case 'error':
+		case 'danger':
+			c.push('alert-danger');
+		break;
+		case 'success':
+			c.push('alert-success');
+		break;
+		case 'warning':
+			c.push('alert-warning');
+		break;
+		case 'info':
+			c.push('alert-info');
+		break;
+		default:
+			c.push('alert-default');
+		break;
+	}
+	
+	if (html != '') {
+		html = "<div class='"+c.join(' ')+"'><button type='button' class='close pull-right' aria-label='Close'><span aria-hidden='true'>&times;</span></button>"+html+"</div>";
+	}
+	
+	return html;
+};
+
+App.hideNotification = function(obj) {
+	if (!obj.hasClass('alert')) {
+		var p = obj.parents('.alert');
+		if (p.length < 1) return;
+		obj = p;
+	}
+	obj.remove();
+};
+
+jQuery.fn.extend({
+	domNodeInserted: function(elementSelector, callback) {
+		return this.each(function(){
+			var onMutationsObserved = function(mutations) {
+				mutations.forEach(function(mutation) {
+					if (mutation.addedNodes.length) {
+						var elements = $(mutation.addedNodes);
+						for (var i = 0; i < elements.length; i++) {
+							if ($(elements[i]).is(elementSelector)) callback(elements[i]);
+						}
+						
+						elements = elements.find(elementSelector);
+						for (var i = 0; i < elements.length; i++) {
+							callback(elements[i]);
+						}
+					}
+				});
+			};
+
+			var target = $(this)[0];
+			var config = { childList: true, subtree: true };
+			var MutationObserver = window.MutationObserver || window.WebKitMutationObserver;
+			var observer = new MutationObserver(onMutationsObserved);
+			observer.observe(target, config);
+		});
+	}
+});
+
+
+App.initTimePicker = function() {
+	$.datepicker.setDefaults({
+		dateFormat: 'yy-mm-dd'
+	});
+	$('.sc_flatpickr').each(function() {
+		//defaults
+		var options = {
+			enableTime: true,
+			altInput: true,
+			dateFormat: "Y-m-d H:i:S",
+			altFormat: "Y-m-d h:i K",
+		};
+		if($(this).hasClass('flatpickr_start_date') || $(this).hasClass('flatpickr_end_date')) {
+			options.enableTime = false;
+			options.altInput = false;
+			options.dateFormat = "Y-m-d";
+			options.altFormat = "Y-m-d";
+		}
+
+		//elements can overwrite
+		// e.g.  data-scfp='{"defaultDate":"2011-10-10 14:11:00"}'
+		var attr = $(this).data('scfp');
+		if (typeof attr == 'string' && attr != '') attr = $.parseJSON(attr);
+		if (typeof attr == 'object') {
+			options = Object.assign(options, attr);
+		}
+		//currently set date
+		// e.g. data-fpval='2011-10-10 14:11:00'
+		var fpval = $(this).data('fpval');
+		if (typeof fpval == 'string' && fpval != '') {
+			options = Object.assign(options, {
+				defaultDate: fpval
+			});
+		}
+
+		// change event
+		var fpevent = $(this).data('fpevent');
+		if (typeof fpevent !== "undefined" && fpevent != '') {
+			options = Object.assign(options, {
+				onChange: eval(fpevent)
+			});
+		}
+		//init fp
+		var fp = flatpickr($(this)[0], options);
+		//add clear button click
+		var that = $(this);
+		$(this).siblings('[class^="input-group-"]').find('.scfp-toggle').click(function(e) {
+			e.preventDefault();
+			if (that.val() != '') {
+				fp.clear();
+			} else {
+				fp.open();
+			}
+		});
+		
+		if(options['static']){
+			$(this).on('change',function(e){
+				toggleStaticClearIcon($(this).parent('.flatpickr-wrapper').siblings('[class^="input-group-"]').find('.scfp-toggle'),that.val());
+			});
+			$(this).parent('.flatpickr-wrapper').siblings('[class^="input-group-"]').find('.scfp-toggle').click(function(e) {
+				e.preventDefault();
+				fp = flatpickr(that[0], options);
+				if (that.val() != '') {
+					toggleStaticClearIcon($(this),'');
+					fp.clear();
+				} else {
+					toggleStaticClearIcon($(this),that.val());
+					fp.open();
+				}
+			});
+		}
+
+		$(document).on(socast.events.datepicker.update, function(e, data) {
+			if (undefined == data.source) return;
+			if(that.attr('id') == data.source || that.attr('name') == data.source ){
+				if(options['static']){
+					if(data.format){
+						options.dateFormat = data.format;
+					}
+					fp = flatpickr(that[0], options);
+				}
+				 fp.setDate(data.date,true,options.dateFormat);
+			 }
+		});
+
+	});
+
+	function daysDiff(minDate,maxDate){
+		return Math.floor((Date.parse(maxDate) - Date.parse(minDate)) / 86400000);
+	};
+
+	function updateDates(selectedDates, dateStr, instance) {
+		var options = instance.config;
+		var date;
+		var flag= $(instance.element).hasClass('flatpickr_end_date')
+		var minDate=$('.flatpickr_start_date').val();
+		var maxDate=$('.flatpickr_end_date').val();
+		var minDateObj=new Date(minDate)
+		var maxDateObj=new Date(maxDate)
+		var diff = daysDiff(minDate,maxDate);
+			if(diff > options.range){
+				if(flag==false){
+					var temp=formatDate(minDateObj.setDate(minDateObj.getDate() + options.range));
+					date= temp > formatDate(new Date()) ? formatDate(new Date()) : temp;
+					fp = document.querySelector(".flatpickr_end_date")._flatpickr;
+					fp.setDate(date);
+				}
+				else if(flag==true){
+					var temp=formatDate(maxDateObj.setDate(maxDateObj.getDate() - options.range));
+					if(options.absoluteDate) {	
+						date=temp < formatDate(new Date(options.absoluteDate)) ? formatDate(options.absoluteDate) : temp;
+					} else {
+						date=temp;
+					}
+					fp = document.querySelector(".flatpickr_start_date")._flatpickr;
+					fp.setDate(date);
+				}
+			}		
+	};
+
+	function formatDate(date) {
+		date = new Date(date);
+		return ( date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate());
+	};
+};
+
+
+App.initFilePicker = function() {
+	$('.form-group .img_previews .preview_container .btnRemoveImage').click(function(e) {
+		e.preventDefault();
+		$(this).siblings('input').val('');
+		$(this).parents('.preview_container').hide();
+	});
+};
+
+
+/*
+ * Date Format 1.2.3
+ * (c) 2007-2009 Steven Levithan <stevenlevithan.com>
+ * MIT license
+ *
+ * Includes enhancements by Scott Trenda <scott.trenda.net>
+ * and Kris Kowal <cixar.com/~kris.kowal/>
+ *
+ * Accepts a date, a mask, or a date and a mask.
+ * Returns a formatted version of the given date.
+ * The date defaults to the current date/time.
+ * The mask defaults to dateFormat.masks.default.
+ */
+
+var dateFormat = function () {
+	var	token = /d{1,4}|m{1,4}|yy(?:yy)?|([HhMsTt])\1?|[LloSZ]|"[^"]*"|'[^']*'/g,
+		timezone = /\b(?:[PMCEA][SDP]T|(?:Pacific|Mountain|Central|Eastern|Atlantic) (?:Standard|Daylight|Prevailing) Time|(?:GMT|UTC)(?:[-+]\d{4})?)\b/g,
+		timezoneClip = /[^-+\dA-Z]/g,
+		pad = function (val, len) {
+			val = String(val);
+			len = len || 2;
+			while (val.length < len) val = "0" + val;
+			return val;
+		};
+
+	// Regexes and supporting functions are cached through closure
+	return function (date, mask, utc) {
+		var dF = dateFormat;
+
+		// You can't provide utc if you skip other args (use the "UTC:" mask prefix)
+		if (arguments.length == 1 && Object.prototype.toString.call(date) == "[object String]" && !/\d/.test(date)) {
+			mask = date;
+			date = undefined;
+		}
+
+		// Passing date through Date applies Date.parse, if necessary
+		date = date ? new Date(date) : new Date;
+		if (isNaN(date)) throw SyntaxError("invalid date");
+
+		mask = String(dF.masks[mask] || mask || dF.masks["default"]);
+
+		// Allow setting the utc argument via the mask
+		if (mask.slice(0, 4) == "UTC:") {
+			mask = mask.slice(4);
+			utc = true;
+		}
+
+		var	_ = utc ? "getUTC" : "get",
+			d = date[_ + "Date"](),
+			D = date[_ + "Day"](),
+			m = date[_ + "Month"](),
+			y = date[_ + "FullYear"](),
+			H = date[_ + "Hours"](),
+			M = date[_ + "Minutes"](),
+			s = date[_ + "Seconds"](),
+			L = date[_ + "Milliseconds"](),
+			o = utc ? 0 : date.getTimezoneOffset(),
+			flags = {
+				d:    d,
+				dd:   pad(d),
+				ddd:  dF.i18n.dayNames[D],
+				dddd: dF.i18n.dayNames[D + 7],
+				m:    m + 1,
+				mm:   pad(m + 1),
+				mmm:  dF.i18n.monthNames[m],
+				mmmm: dF.i18n.monthNames[m + 12],
+				yy:   String(y).slice(2),
+				yyyy: y,
+				h:    H % 12 || 12,
+				hh:   pad(H % 12 || 12),
+				H:    H,
+				HH:   pad(H),
+				M:    M,
+				MM:   pad(M),
+				s:    s,
+				ss:   pad(s),
+				l:    pad(L, 3),
+				L:    pad(L > 99 ? Math.round(L / 10) : L),
+				t:    H < 12 ? "a"  : "p",
+				tt:   H < 12 ? "am" : "pm",
+				T:    H < 12 ? "A"  : "P",
+				TT:   H < 12 ? "AM" : "PM",
+				Z:    utc ? "UTC" : (String(date).match(timezone) || [""]).pop().replace(timezoneClip, ""),
+				o:    (o > 0 ? "-" : "+") + pad(Math.floor(Math.abs(o) / 60) * 100 + Math.abs(o) % 60, 4),
+				S:    ["th", "st", "nd", "rd"][d % 10 > 3 ? 0 : (d % 100 - d % 10 != 10) * d % 10]
+			};
+
+		return mask.replace(token, function ($0) {
+			return $0 in flags ? flags[$0] : $0.slice(1, $0.length - 1);
+		});
+	};
+}();
+
+// Some common format strings
+dateFormat.masks = {
+	"default":      "ddd mmm dd yyyy HH:MM:ss",
+	shortDate:      "m/d/yy",
+	mediumDate:     "mmm d, yyyy",
+	longDate:       "mmmm d, yyyy",
+	fullDate:       "dddd, mmmm d, yyyy",
+	shortTime:      "h:MM TT",
+	mediumTime:     "h:MM:ss TT",
+	longTime:       "h:MM:ss TT Z",
+	isoDate:        "yyyy-mm-dd",
+	isoTime:        "HH:MM:ss",
+	isoDateTime:    "yyyy-mm-dd'T'HH:MM:ss",
+	isoUtcDateTime: "UTC:yyyy-mm-dd'T'HH:MM:ss'Z'"
+};
+
+// Internationalization strings
+dateFormat.i18n = {
+	dayNames: [
+		"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat",
+		"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
+	],
+	monthNames: [
+		"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+		"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"
+	]
+};
+
+dateFormat.masks.sbp = 'yyyy-mm-dd h:MM TT';
+
+// For convenience...
+Date.prototype.format = function (mask, utc) {
+	return dateFormat(this, mask, utc);
+};
+
+App.dateFormatLocal = function(utctime, format) {
+	var date = new Date();
+	var timezoneOffset = date.getTimezoneOffset()*60;
+	date.setTime((utctime - timezoneOffset)*1000);
+	return date.format(format);
+}
+
+SVGLoader = {};
+SVGLoader.icons = {};
+SVGLoader.init = function() {
+	$('img.svg-loader').each(function() {
+		SVGLoader.getSVG($(this));
+	});
+	$(document).domNodeInserted('img.svg-loader', function(el) { 
+		SVGLoader.getSVG($(el));
+	});
+};
+SVGLoader.getSVG = function(obj) {
+	if (obj.hasClass('loaded')) return;
+	var icon = obj.attr('data-icon');
+	if (!icon) return;
+	
+	if (typeof SVGLoader.icons[icon] == 'string') {
+		if (SVGLoader.icons[icon] != 'loading') {
+			SVGLoader.placeString(icon, SVGLoader.icons[icon]);
+		}
+		return;
+	}
+	
+	var cdn = '';
+	if (typeof CDN_HOST_MEDIA !== "undefined") {
+		cdn = CDN_HOST_MEDIA;
+	}
+	var url = cdn+"/image/svg?icon="+icon;
+	
+	if (typeof SVGRect == "undefined") {
+		//browser does not support svg
+		if (obj.attr('src') == undefined) {
+			obj.attr('src', url);
+		}
+		return;
+	}
+	
+	SVGLoader.icons[icon] = 'loading';
+	$.get(url+"&fill=currentColor", function(data) {
+		var str = new XMLSerializer().serializeToString(data.documentElement);
+		SVGLoader.icons[icon] = str;
+		SVGLoader.placeString(icon, str);
+	});
+};
+SVGLoader.placeString = function(icon, str) {
+	$('img.svg-loader[data-icon="'+icon+'"]').each(function() {
+		var obj = $(this);
+		$('<span></span>').addClass('svg-loader-container').html(str).insertAfter(obj).children('svg').addClass('icon');
+		obj.addClass('loaded');
+	});
+};
+
+
+///fix for jquery's clone() method that doesnt include select and textarea values when cloning forms
+(function (original) {
+  jQuery.fn.clone = function () {
+    var result           = original.apply(this, arguments),
+        my_textareas     = this.find('textarea').add(this.filter('textarea')),
+        result_textareas = result.find('textarea').add(result.filter('textarea')),
+        my_selects       = this.find('select').add(this.filter('select')),
+        result_selects   = result.find('select').add(result.filter('select'));
+
+    for (var i = 0, l = my_textareas.length; i < l; ++i) $(result_textareas[i]).val($(my_textareas[i]).val());
+    for (var i = 0, l = my_selects.length;   i < l; ++i) result_selects[i].selectedIndex = my_selects[i].selectedIndex;
+
+    return result;
+  };
+}) (jQuery.fn.clone);
+
+$.widget( "socast.gchart", {
+	options: {
+		chartType: 'LineChart', //Default...
+		options: {},
+		data: [],
+		printable: false,
+		visualization: 'material',
+		convertOptions:true, //Only to fix a axis issue with material, should always be true
+		annotations: 0,
+	},
+	_create: function() {
+		this.element.addClass('gchart');
+	},
+	draw: function() {
+		var datePattern = new RegExp('^new Date');
+		for (var i=1; i< this.options.data.length; i++) {
+			for (var j in this.options.data[i]) {
+				if (typeof this.options.data[i][j] == 'string' && this.options.data[i][j].match(datePattern)) {
+					this.options.data[i][j] = window.eval(this.options.data[i][j]);
+				}
+			}
+		}
+		
+		this._prepareChart();
+		
+		if(undefined!=this.chart){
+			//Add Option for printable chart
+			var that = this;
+			if(this.options.printable){
+				google.visualization.events.addListener(this.chart, 'ready', function () {
+
+					if(that.options.chartType == 'bar' && that.options.visualization == 'material'){
+						imageURI = that._getBarChartURI(that.element[0]);
+					}else{
+						imageURI = that.chart.getImageURI();
+					}
+					
+					if(!$(that.element[0]).hasClass('svgChart')){
+						$(that.element[0]).append('<img src="' + imageURI + '" alt="">');
+						$(that.element[0]).addClass('svgChart');
+					}
+				  	
+					 
+				});
+			}
+			this.datatable = google.visualization.arrayToDataTable(this.options.data);
+			if (this.options.annotations > 0) {
+				var view = new google.visualization.DataView(this.datatable);
+				var viewColumns = [0,1];
+				var annotationAmount = 2;
+				// Create Annotations for graphs with multiple series
+				for (let i = 1; i <= this.options.annotations; i++) {
+					viewColumns.push({
+						calc: 'stringify',
+						sourceColumn: i,
+						type: 'string',
+						role: 'annotation'              
+					  });
+					if (i != this.options.annotations) {
+						viewColumns.push(annotationAmount)
+						annotationAmount++;
+					}
+				}
+				view.setColumns(viewColumns);
+				this.chart.draw(view,this.chart_options);
+
+			} else {
+				this.chart.draw(this.datatable,this.chart_options);
+			}
+		}
+	},
+	_drawMaterial: function() {
+		this.element.addClass('material');
+		this.element.parent().addClass('gchart-material');
+		this.chart = new google.charts.Line(this.element[0]);
+		this.chart.draw(this.datatable, google.charts.Line.convertOptions(this.options.options));
+
+	},
+	_drawOld: function() {
+		switch(this.options.chartType){
+
+		}
+		this.chart = new google.visualization.LineChart(this.element[0]);
+		this.chart.draw(this.datatable, this.options.options);
+	},
+	_prepareChart: function(){
+		
+		if (this.options.visualization == 'material') {
+			//material looks better but is buggy
+			this.element.addClass('material');
+			this.element.parent().addClass('gchart-material');
+			switch(this.options.chartType){
+				case 'line':
+				case 'LineChart':
+					this.chart = new google.charts.Line(this.element[0]);
+					this.chart_options = google.charts.Line.convertOptions(this.options.options);
+				break;
+				
+				case 'bar':
+					//Material Chart
+					this.chart = new google.charts.Bar(this.element[0]);
+					if(this.options.convertOptions){
+						this.chart_options = google.charts.Bar.convertOptions(this.options.options);
+					}else {
+						this.chart_options = this.options.options;
+					}
+					
+					
+						
+				break;
+			}
+			
+		} else {
+			this.chart_options = this.options.options; // No need for material conversions
+			switch(this.options.chartType){
+				case 'line':
+				case 'LineChart':
+					
+					this.chart = new google.visualization.LineChart(this.element[0]);
+				break;
+				case 'pie':
+					//Classic Chart
+					this.chart = new google.visualization.PieChart(this.element[0]);
+				break;
+
+				case 'geochart':
+					//Classic Chart
+					this.chart = new google.visualization.GeoChart(this.element[0]);
+					
+
+				break;
+				
+				case 'bar':
+					
+					this.chart =new  google.visualization.BarChart(this.element[0]);
+				break;
+
+				case 'column':
+
+					this.chart = new google.visualization.ColumnChart(this.element[0]);
+				break;
+
+				case 'combo':
+					this.chart = new google.visualization.ComboChart(this.element[0]);
+				break;
+				case 'map_dl':					  
+					  
+					//Custom Map Style
+					var mapStyle = [{
+						'featureType': 'all',
+						'elementType': 'all',
+						'stylers': [{'visibility': 'off'}]
+					}, {
+						'featureType': 'landscape',
+						'elementType': 'geometry',
+						'stylers': [{'visibility': 'on'}, {'color': '#fcfcfc'}]
+					}, {
+						'featureType': 'water',
+						'elementType': 'labels',
+						'stylers': [{'visibility': 'off'}]
+					}, {
+						'featureType': 'water',
+						'elementType': 'geometry',
+						'stylers': [{'visibility': 'on'}, {'hue': '#5f94ff'}, {'lightness': 60}]
+					}];
+					
+					var data = this.options.data;
+					if(undefined !== this.options.options.magnifyingGlass.zoomFactor){
+						var zoomFactor = this.options.options.magnifyingGlass.zoomFactor;
+					} else {
+						var zoomFactor = 9;
+					}
+					
+					map = new google.maps.Map(this.element[0], {
+						zoom: zoomFactor,
+						mapTypeId: "terrain",
+						center: { lat: parseFloat(data.metadata.map_center.latitude), lng: parseFloat(data.metadata.map_center.longitude) },
+						//styles: mapStyle
+					});
+					var infowindow = new google.maps.InfoWindow();
+
+					map.data.addGeoJson(data);
+
+					map.data.setStyle(function(feature) {
+						
+						var mag = Math.exp(parseFloat(feature.getProperty('imp'))) * 0.1;
+						var scale = parseFloat(feature.getProperty('scale')) * 2;
+						return /** @type {google.maps.Data.StyleOptions} */({
+							title : feature.getProperty('name'),
+							});
+					  });
+
+					map.data.addListener('click', function(event) {
+						var feat = event.feature;
+						var html = "<h4>"+feat.getProperty('name')+"</h4><div>"+feat.getProperty('description')+"</div>";
+						//html += "<br><a class='normal_link' target='_blank' href='"+feat.getProperty('link')+"'>link</a>";
+						infowindow.setContent(html);
+						infowindow.setPosition(event.latLng);
+						infowindow.setOptions({pixelOffset: new google.maps.Size(0,-34)});
+						infowindow.open(map);
+					});
+					
+					
+				break;
+			}
+		}
+	},
+	_getBarChartURI: function(){
+		
+		var domURL;
+		var imageNode;
+		var imageURL;
+		var svgParent;
+
+		// add svg namespace to chart
+		domURL = window.URL || window.webkitURL || window;
+		svgParent = this.element[0].getElementsByTagName('svg')[0];
+		svgParent.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+		imageNode = this.element[0].cloneNode(true);
+		imageURL = domURL.createObjectURL(new Blob([svgParent.outerHTML], {type: 'image/svg+xml'}));
+		
+		return imageURL;
+		
+	}
+});
+
+function isUrlValid(url) {
+    return /^(https?|s?ftp):\/\/(((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:)*@)?(((\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5]))|((([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.)+(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.?)(:\d*)?)(\/((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)+(\/(([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)*)*)?)?(\?((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)|[\uE000-\uF8FF]|\/|\?)*)?(#((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)|\/|\?)*)?$/i.test(url);
+}

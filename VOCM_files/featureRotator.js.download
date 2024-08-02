@@ -1,0 +1,234 @@
+$(document).on('ready socast:reinit',function(e) {
+	$('.featureRotator').each(function() {
+		$(this).featurerotator();
+	});
+});
+
+$.widget( "socast.featurerotator", {
+	_create: function() {
+		if (this.element.data('initfr')) return;
+		this.element.data('initfr', true);
+		this.uid = this.element.attr('data-uid');
+		if (this.uid == undefined)  {
+			this.uid = this._generateUID();
+			this.element.attr('data-uid', this.uid);
+		}
+		
+		this.element.addClass('featureRotator');
+		
+		var width = this.element.width();
+		if (width < 400) {
+			this.element.attr('data-container', 'small');
+		}
+		
+		this.interval = null;
+		this.currentIndex = 0;
+		this.isInAnimation = false;
+		
+		this.init();
+		
+		this.element.find('.marker[data-index="0"]').addClass('active');
+		
+		var that = this;
+		
+		this.element.on('click', '.marker', function(e) {
+			e.preventDefault();
+			var index = $(this).attr('data-index');
+			
+			index = parseInt(index);
+			that.start(); //reset time to next slide
+			that._goTo(index);
+		});
+		this.element.on('click', '.marker.image-caption', function(e) {
+			var href = $(this).attr('href');
+			var target = $(this).attr('target');
+			if (target == undefined) target = '_self';
+			
+			if (href != '' && href != '#') {
+				window.open(href, target, '');
+			}
+		});
+		this.element.on('mouseover', '.marker', function(e) {
+			e.preventDefault();
+			that.stop();
+			var index = $(this).attr('data-index');
+			
+			index = parseInt(index);
+			that._goTo(index);
+		});
+		
+		this.element.on('mouseover', '.feature', function(e) {
+			that.stop();
+		});
+		
+		this.element.on('mouseout', '.feature, .marker', function(e) {
+			that.start();
+		});
+		
+		this.element.find('.items-wrapper-box').socasttouch({
+			swipeCallback: function(direction) {
+				switch(direction) {
+					case 'left':
+					case 'up':
+						that.rotate('next');
+					break;
+					case 'right':
+					case 'down':
+						that.rotate('previous');
+					break;
+				}
+			}
+		});
+		
+		this.element.on('focus', '.feature, .marker', function(e) {
+			that.stop();
+			var focusedIndex = $(this).attr('data-index');
+			focusedIndex = parseInt(focusedIndex);
+			that._goTo(focusedIndex);
+		});
+		this.element.on('blur', '.feature, .marker', function(e) {
+			that.start();
+		});
+		
+		this.element.removeClass( "hidden" );
+	},
+	_setOption: function( key, value ) {
+		this._super( key, value );
+	},
+	_setOptions: function( options ) {
+		this._super( options );
+	},
+	_generateUID: function() {
+		return 'scfr-'+Math.random().toString(36).substr(2, 9);
+	},
+	_addCSSRule: function(cssRules) {
+		$("<div />", {
+			html: '<style>' + cssRules + '</style>'
+		}).appendTo(this.element); 
+	}, 
+	_createMarkers: function(features, markers) {
+		var markersObj = this.element.find('.markers');
+		var markerPrototype = null;
+		if (markers.length > 0) {
+			markerPrototype = markers.first().clone().removeClass('active');
+		} else {
+			markerPrototype = $("<a href='javascript:;' class='marker marker-state rectangle'><span class='sr-text'>See Feature 1</span></a>");
+		}
+		for (var i = markers.length; i< features.length; i++) {
+			var clone = markerPrototype.clone();
+			clone.find('.sr-text').html('See Feature '+(i+1));
+			clone.attr('data-index', i);
+			markersObj.append(clone);
+		}
+	},
+	_afterRotate: function() {
+		if (this.currentIndex != 'end') return;
+		
+		this._goTo(0, false);
+	},
+	_goTo: function(index, animate) {
+		if (animate == undefined) animate = true;
+		var feature = this.element.find('.feature[data-index="'+index+'"]');
+		
+		if (feature.length < 1) {
+			this._reIndex();
+			feature = this.element.find('.feature[data-index="'+index+'"]');
+			if (feature.length < 1) return;
+		}
+		
+		var offset = feature.position().left;
+		
+		var wrapper = this.element.find('.items-wrapper');
+		var properties = {'left':'-'+offset+'px'};
+		if (animate) {
+			var that = this;
+			if (this.isInAnimation) wrapper.stop(true);
+			this.isInAnimation = true;
+			wrapper.animate(properties, 400, function(e) {
+				that._afterRotate(index);
+				that.isInAnimation = false;
+			});
+		} else {
+			wrapper.css(properties);
+		}
+		
+		this.element.find('.marker').removeClass('active');
+		this.element.find('.marker[data-index="'+index+'"]').addClass('active');
+		
+		this.currentIndex = index;
+	},
+	_reIndex: function() {
+		var features = this.element.find('.feature:not([data-index="end"])');
+		var markers = this.element.find('.marker');
+		
+		var end = this.element.find('.feature[data-index="end"]');
+		if (end.length > 0) end.remove();
+		for (var i=0; i < features.length;i++) {
+			$(features[i]).attr('data-index', i);
+			$(markers[i]).attr('data-index', i);
+		}
+		
+		var end = $(features[0]).clone().attr('data-index', 'end');
+		this.element.find('.items-wrapper').append(end);
+	},
+	init: function() {
+		this.stop();
+		var features = this.element.find('.feature:not([data-index="end"])');
+		var markers = this.element.find('.marker');
+		
+		if (features.length > markers.length) {
+			this._createMarkers(features, markers);
+		} else if (features.length != markers.length) return;
+		this.count = features.length;
+		if (this.count == 0) {
+			this.element.addClass('hidden');
+			return;
+		} else if (this.count == 1) {
+			this.element.find('.control').hide();
+		}
+		
+		this._addCSSRule('.featureRotator[data-uid="'+this.uid+'"] .items-wrapper, #theSidebar .featureRotator[data-uid="'+this.uid+'"] .items-wrapper { width: calc(('+this.count+' + 1) * (100% + 10px ) ); max-width: calc(('+this.count+' + 1) * (100% + 10px) ) !important;} .featureRotator[data-uid="'+this.uid+'"] .feature { width: calc( (100% - ( ('+this.count+' + 1 ) * 10px ) ) / ('+this.count+' + 1)); }');
+		
+		this._reIndex();
+		
+		this.start();
+		
+		var that = this;
+	},
+	rotate: function(direction) {
+		this.start(); //reset time to next slide
+		if (direction == undefined) direction = 'next';
+		
+		if (this.currentIndex == 'end') this.currentIndex = 0;
+		
+		if (direction == 'previous') {
+			this.currentIndex--;
+			if (this.currentIndex < 0) {
+				this.currentIndex = this.count -1;
+			}
+		} else {
+			this.currentIndex++;
+			if (this.currentIndex >= this.count) {
+				this.currentIndex = 'end';
+			}
+		}
+		this._goTo(this.currentIndex);
+	},
+	start: function() {
+		if (this.count <= 1) return;
+		
+		if (this.interval != null) {
+			clearInterval(this.interval);
+		}
+		var that = this;
+		this.interval = setInterval(function() {
+			that.rotate();
+		}, 5000);
+	},
+	stop: function() {
+		if (this.interval != null) {
+			clearInterval(this.interval);
+			this.interval = null;
+		}
+	}
+});

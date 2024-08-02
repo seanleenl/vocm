@@ -1,0 +1,42 @@
+jQuery(function ($) {
+	var currentTickerPost = 0;
+	var tickerPosts = null;
+	var rotate = 0;
+	$(document).on('ready socast:reinit',function(e) {
+		if(typeof tickerPadding !== "undefined" && tickerPadding == 'no'){// move the ticker to top position
+			var tickerDom = $("div#headline-ticker-div").parent().parent();
+			if (tickerDom != undefined && tickerDom != null){
+				$(".aboveContentFullWidth").prepend($(tickerDom));
+			}
+		}
+		tickerPosts = $("div#headline-ticker-div").children('div');
+		if (tickerPosts.length > 0){
+			$(tickerPosts).first().removeClass('hide');
+			$(tickerPosts).first().addClass('show');
+		}
+		if (tickerPosts.length > 1){
+			rotate = setTimeout(showNextTickerPostTitle,5000);
+		}
+	});
+	
+	function showNextTickerPostTitle(){
+		if (tickerPosts[currentTickerPost] == undefined) return;
+		$(tickerPosts[currentTickerPost]).removeClass('show');
+		$(tickerPosts[currentTickerPost]).addClass('hide');
+		currentTickerPost++;
+		if (currentTickerPost >= tickerPosts.length) currentTickerPost = 0;
+		try{
+			if (tickerPosts[currentTickerPost] == undefined) return;
+			$(tickerPosts[currentTickerPost]).removeClass('hide');
+			$(tickerPosts[currentTickerPost]).addClass('show');
+			//$("#more-details-of-ticker-post a").attr('href',$(tickerPosts[currentTickerPost]).find('a').attr('href'));
+		}catch(e){}
+		// debug 
+		// clearInterval(rotate);
+		rotate = setTimeout(showNextTickerPostTitle,5000);
+	}
+	
+});
+
+
+

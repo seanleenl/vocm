@@ -1,0 +1,46 @@
+function EventCalendarList(id, accountID, calendars, offset, num_items, timezone, blog_url, template) {
+    this.showMore = showMore;
+    function showMore() {
+        jQuery(function ($) {
+            var width = $('#eventCalendarList_' + id).width();
+            if (width < 450) $('#eventCalendarList_' + id).addClass('vertical');
+            else $('#eventCalendarList_' + id).removeClass('vertical');
+            $('#eventCalendarList_' + id + ' .pagination').hide();
+			var artistID = $('#eventCalendarList_' + id).data('artistid');
+			if (isNaN(parseInt(artistID))) {
+				artistID = 0;
+			}
+            $.ajax({
+                dataType: "json",
+                url: "/ajax/eventCalendar",
+                data: {'id': calendars, range: 'current', 'offset': offset, 'limit': num_items, 'timezone': timezone, 'cacheKill': Math.random(), 'accountID':accountID, artistID: artistID}
+            }).done(function (data) {
+                if(offset==0){
+                    $('#eventCalendarList_' + id + ' .events').empty();
+                }
+                for (var i = 0; i < data.events.length; i++) {
+                    var event = template.replace(/{DATE}/g, data.events[i].date).replace(/{TITLE}/g, data.events[i].title).replace(/{EVENT_LINK}/g, data.events[i].url).replace(/{VENUE}/g, data.events[i].venue).replace(/{FORMATTED_DATE}/g, data.events[i].formatted_date);
+
+                    if(null!== data.events[i].custom_meta){
+                        var custom_meta = (data.events[i].custom_meta);
+                        for(tag in custom_meta) {
+                            var pattern= new RegExp('{meta.'+tag+'}',"g");
+                            event = event.replace( pattern,custom_meta[tag]);
+                        }
+                    }
+					event = event.replace(/{[a-zA-Z.-_]+}/g, '');
+                    $('#eventCalendarList_' + id + ' .events').append(event);
+                }
+                if (data.events.length > 0 && data.events.length >= num_items) {
+                    offset = offset + data.events.length;
+                    $('#eventCalendarList_' + id + ' .pagination').show();
+                } else {
+                    $('#eventCalendarList_' + id + ' .pagination').hide();
+                }
+                if ($('#eventCalendarList_' + id + ' .events .event').length == 0) {
+                    $('#eventCalendarList_' + id + ' .events').html('No upcoming events');
+                }
+            });
+        });
+    }
+}

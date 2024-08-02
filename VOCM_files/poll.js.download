@@ -1,0 +1,258 @@
+var socast = socast || {};
+socast.events = socast.events || {};
+socast.events.poll = {};
+socast.events.poll.update = "pollupdate.events.socast";
+
+var SCPoll = SCPoll|| {};
+SCPoll.data = SCPoll.data || {};
+SCPoll.sources = [];
+SCPoll.updateTimer = null;
+SCPoll.registerSource = function(id) {
+	//define your event listener before registering
+	if (SCPoll.sources[id] == undefined) {
+		SCPoll.sources.push(id);
+		SCPoll.data[id] = [];
+		if (SCPoll.updateTimer == null) {
+			SCPoll.updateTimer = setTimeout(function() {
+				SCPoll.getUpdates();
+			}, 1000);
+		}
+	}
+}
+
+SCPoll.getUpdates = function() {
+	var params = {};
+	params.type = 'get';
+	params.url = '/api/v1/polls';
+	params.data = {ids: SCPoll.sources.join(',')};
+	params.dataType = 'json';
+	params.timeout = 10000;
+	var request = jQuery.ajax(params);
+	request.done(function(response) {
+		var data = {
+			status: "success"
+		};
+		if (!response || !response.status || response.status != 'success') {
+			data.status = 'error';
+			$(document).trigger(socast.events.poll.update, data);
+		} else {
+			data.data = response.data;
+			$(document).trigger(socast.events.poll.update, data);
+		}
+	});
+	request.fail(function() {
+		var data = {
+			status: "error"
+		};
+		$(document).trigger(socast.events.poll.update, data);
+	});
+};
+
+$.widget( "socast.scpoll", {
+	options: {
+	},
+	_create: function() {
+		if (this.element.data('initpoll')) return;
+		this.element.data('initpoll', true);
+		
+		this.id = this.element.attr('data-pollid');
+		this.resultsType = this.element.attr('data-resultslabel');
+		this.isMultiColumn = false;
+		this.state = this.element.attr('data-state');
+		this.save_data = {};
+		if (this.element.attr('data-save') != undefined) {
+			this.save_data = JSON.parse(this.element.attr('data-save'));
+		}
+		this.options = {};
+		
+		//get poll state
+		var state = this._getPollState();
+		switch(state) {
+			case 'closed':
+				this.element.attr('data-results', 'visible');
+				this._calculateBars();
+			break;
+			case 'open':
+				this.element.attr('data-results', 'visible');
+				this._openVoting();
+			break;
+		}
+		
+		//media columns
+		this.cols = 1;
+		this.minColumnWidth = parseInt(this.element.attr('data-colwidth'));
+		this._getColumns();
+		
+		var that = this;
+		//register data source and handler
+		$(document).on(socast.events.poll.update, function(e, data) {
+			if (data.status == 'success') {
+				that._handleDataUpdate(data.data);
+			}
+		});
+		SCPoll.registerSource(this.id);
+		
+		//handle resize for columns
+		$(window).on('resize', App.throttle(function() {
+			that._getColumns();
+		}, 100));
+		
+		//handle vote
+		this.element.on('click', '.voteBtn', function(e) {
+			e.preventDefault();
+			if (that.element.hasClass('voting')) return;
+			that.element.addClass('voting');
+			var id = $(this).parents('.option').attr('data-optionid');
+			that.vote(id);
+		});
+		
+	},
+	_setOption: function( key, value ) {
+		this._super( key, value );
+	},
+	_setOptions: function( options ) {
+		this._super( options );
+	}, 
+	_getPollState() {
+		if (this.state == 'closed') return this.state;
+		
+		if (this._hasVoted()) return 'closed';
+		
+		return this.state;
+	},
+	_openVoting: function() {
+		this.element.attr('data-state', 'open');
+		this.element.find('.option .label span').wrap("<a class='btn btn-outline-sc1 voteBtn' href='#'></a>");
+	}, 
+	_closeVoting: function() {
+		this.element.attr('data-state', 'closed');
+		this.element.attr('data-results', 'visible');
+		this.element.find('.option .label span').unwrap("<a class='btn btn-outline-sc1 voteBtn' href='#'></a>");
+
+		var results = $(this.element[0]).find('div.results.afterVote.hidden');
+		results.each(function(i) { 
+			$(this).removeClass('hidden');
+		})
+	},
+	_calculateBars: function() {
+		var options = {};
+		var total = 0;
+		this.element.find('.option').each(function() {
+			var id = $(this).attr('data-optionid');
+			options[id] = 0;
+			if ($(this).attr('data-votes') != undefined) {
+				options[id] = parseInt($(this).attr('data-votes'));
+			}
+			total += options[id];
+		});
+		for (var id in options) {
+			var obj = this.element.find('.option[data-optionid="'+id+'"]');
+			var barDisplay = 0;
+			var countDisplay = 0;
+			
+			if (total == 0) {
+				barDisplay = 0;
+			} else {
+				barDisplay = Math.round((options[id]/total)*100);
+			}
+			switch (this.resultsType) {
+				case 'percentage':
+					countDisplay = barDisplay+'%';
+				break;
+				case 'votes':
+					countDisplay = getShortNumberFormat(options[id]);
+				break;
+			}
+			
+			obj.find('.progress-bar').width(barDisplay+'%');
+
+			let voteString = countDisplay + ' Vote';
+			if ( countDisplay > 1 || countDisplay < 1 ) {
+				voteString = voteString + 's';
+			}
+
+			obj.find('.results-label').html(voteString);
+		}
+	},
+	_handleDataUpdate: function(data) {
+		if (data[this.id] == undefined) return;
+		if (!data[this.id].options) return;
+		
+		if (data[this.id].has_voted || this._hasVoted()) {
+			this._closeVoting();
+		}
+		
+		for (var oid in data[this.id].options) {
+			this.element.find('.option[data-optionid="'+oid+'"]').attr('data-votes', data[this.id].options[oid].votes);
+		}
+		
+		this._calculateBars();
+	},
+	_getColumns: function() {
+		var cols = 1;
+		if (this.minColumnWidth > 0) {
+			cols = Math.min(6, Math.max(1,Math.floor(this.element.width()/this.minColumnWidth)));
+		}
+		this.cols = cols;
+		this.element.attr('data-cols', this.cols);
+	},
+	_hasVoted() {
+		var cookie = readCookie('sc_poll-'+this.id);
+		
+		if (cookie != null) return true;
+		
+		return false;
+	},
+	vote: function(id) {
+		var that = this;
+		
+		var params = {};
+		params.type = 'post';
+		params.url = '/api/v1/polls/vote';
+		params.data = Object.assign(this.save_data,{pollID: this.id, optionID: id});
+		params.dataType = 'json';
+		params.timeout = 10000;
+		
+		var request = jQuery.ajax(params);
+		request.done(function(response) {
+			if (response && response.status && response.status == 'success') {
+				createCookie('sc_poll-'+that.id, '1', 30);
+				that._closeVoting();
+				$(document).trigger(socast.events.poll.update, response);
+			}
+			that.element.removeClass('voting');
+		});
+		request.fail(function() {
+			that.element.removeClass('voting');
+		});
+	}
+});
+
+$.widget( "socast.scpolllist", {
+	options: {
+	},
+	_create: function() {
+		if (this.element.data('initpolllist')) return;
+		this.element.data('initpolllist', true);
+		
+		var colwidth = this.element.attr('data-colwidth');
+		if (colwidth != undefined) {
+			colwidth = parseInt(colwidth);
+		} else {
+			colwidth = 300;
+		}
+		
+		if (colwidth > 0) {
+			this.element.children('.items-wrapper').chronomasonry({
+				minColumnWidth: colwidth,
+				throttleFn: App.throttle,
+				fadeIn: true
+			});
+		}
+	}
+});
+
+$(document).ready(function() {
+	$('.pollWidget').scpoll();
+	$('.pollListWidget').scpolllist();
+});

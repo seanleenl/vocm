@@ -1,0 +1,204 @@
+
+.eventWidget * {
+	-webkit-box-sizing: border-box;
+	-moz-box-sizing: border-box;
+	box-sizing: border-box; 
+}
+
+.eventWidget a.pagination {
+	color: #666666 !important;
+	width:100%;
+	margin-bottom:0px;
+}
+
+
+.eventWidget .events {
+	width:100%;
+	
+}
+
+/* grid */
+.eventWidget  .activeFilter {
+	font-weight: bold;
+	color:#444444 !important;
+}
+
+.eventWidget .filter {
+	margin-bottom:14px;
+}
+
+.eventWidget .filter a {
+	margin-right:10px;
+}
+
+.eventGrid .event{
+	position:relative;
+	margin-bottom:10px !important;
+	padding:2px;
+	border: 1px solid #dfdfdf;
+	border-radius:5px 5px 5px 5px;
+	-moz-border-radius:5px 5px 5px 5px;
+}
+.eventGrid .event .info{
+	background-color:#eeeeee;
+	word-wrap:break-word;
+	border-radius:3px 3px 3px 3px;
+	-moz-border-radius:3px 3px 3px 3px;
+}
+
+.eventGrid .event .date{
+	position:absolute;
+	left:2px;
+	top:2px;
+	color:#ffffff;
+	padding:5px;
+	font-size:18px;
+	font-weight:bold;
+}
+
+.eventGrid .event .date_bgd{
+	position:absolute;
+	left:2px;
+	top:2px;
+	opacity:0.6;
+	padding:5px;
+	font-size:18px;
+	font-weight:bold;
+	-moz-border-radius-topleft: 3px;
+	border-top-left-radius: 3px;
+}
+
+.eventGrid .event .image{
+	min-height:30px;
+	margin-bottom:10px;
+}
+.eventGrid .event .image img{
+	width: 100%;
+	-moz-border-radius-topright: 3px;
+	-moz-border-radius-topleft: 3px;
+	border-top-right-radius: 3px;
+	border-top-left-radius: 3px;
+}
+
+.eventGrid .event .name {
+	margin-bottom:7px;
+	padding-left:10px;
+	padding-right:10px;
+	font-weight:bold;
+}
+
+.eventGrid .event .venue{
+	font-weight:bold;
+	margin-bottom:7px;
+	padding-left:10px;
+	padding-right:10px;
+}
+
+.eventGrid .event .description {
+	line-height: 1.5em;
+	max-height: 3em;
+	overflow: hidden;
+	padding-left:10px;
+	padding-right:10px;
+	text-overflow: ellipsis;
+}
+
+.eventGrid .event .details {
+	padding-left:10px;
+	padding-right:10px;
+	font-size:90%;
+}
+.eventGrid .event .subtitle {
+	padding-left:10px;
+	padding-right:10px;
+}
+
+/* list */
+
+.eventCalendarList .event{
+	margin-bottom:10px !important;
+	padding:0px;
+	border-top: 1px solid #eeeeee;
+}
+
+.eventCalendarList .event .event_teaser {
+	font-weight:bold;
+	display:inline-block;
+	font-size:110%;
+}
+
+.eventCalendarList .event .date{
+	padding:5px 8px;
+	color: #ffffff;
+}
+
+.eventCalendarList .event .name {
+	padding-left:10px;
+}
+
+.eventCalendarList .event .divider {
+	padding-left:5px;
+	color: #888888;
+	font-weight: normal;
+	padding-right:5px;
+}
+
+.eventCalendarList .event .venue{
+	padding-right:10px;
+}
+
+.eventCalendarList.vertical .event .event_teaser {
+	display: block;
+	padding:5px;
+}
+.eventCalendarList .event .venue { font-size: 100%; }
+.eventCalendarList.vertical .event .divider { display: none; }
+
+/* table */
+.eventDisplayTable h2 {
+    text-transform: uppercase;
+}
+
+.eventDisplayTable .event {
+    width: 100%;
+    padding-bottom: 7px;
+    margin-top: 7px;
+	border-bottom: 1px solid currentColor;
+}
+
+.eventDisplayTable .event:first-child {
+    margin-top: 0;
+}
+
+.eventDisplayTable .event:last-child {
+    border-bottom: none !important;
+	margin-bottom:10px;
+	padding-bottom:0;
+}
+
+.eventDisplayTable .event > div {
+    display: inline-block;
+    vertical-align: top;
+    padding-right: 10px;
+	font-size: 112%;
+	line-height:1.2em;
+}
+
+.eventDisplayTable .name,
+.eventDisplayTable .venue {
+    width: 40%;
+}
+
+.eventDisplayTable .date {
+    width: 20%;
+}
+
+.eventDisplayTable.vertical .event > div {
+	display: block;
+	width: 100%;
+	margin-bottom:10px;
+}
+
+.eventDisplayTable .name {
+	font-weight: bold;
+}
